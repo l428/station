@@ -1,17 +1,11 @@
-const getId = (function getId() {
-  const ids = {};
-  return (name) => {
-    ids[name] = ids[name] || 0;
-    const idSuffix = ids[name] ? `-${ids[name]}` : '';
-    ids[name] += 1;
-    return `${name}${idSuffix}`;
-  };
-}());
+import { getId } from '../util.js';
 
 function update(fieldset, index, labelTemplate) {
   const legend = fieldset.querySelector(':scope>.field-label').firstChild;
   const text = labelTemplate.replace('#', index + 1);
-  legend.textContent = text;
+  if (legend) {
+    legend.textContent = text;
+  }
   fieldset.id = getId(fieldset.name);
   fieldset.setAttribute('data-index', index);
   if (index > 0) {
@@ -44,7 +38,7 @@ function insertRemoveButton(fieldset, wrapper, form) {
   const removeButton = createButton('Remove', 'remove');
   removeButton.addEventListener('click', () => {
     fieldset.remove();
-    wrapper.querySelector('.item-add').setAttribute('data-hidden', 'false');
+    wrapper.querySelector('.item-add').setAttribute('data-visible', 'true');
     wrapper.querySelectorAll('[data-repeatable="true"]').forEach((el, index) => {
       update(el, index, wrapper['#repeat-template-label']);
     });
@@ -72,7 +66,7 @@ const add = (wrapper, form) => (e) => {
     insertRemoveButton(newFieldset, wrapper, form);
   }
   if (+max <= childCount + 1) {
-    e.currentTarget.setAttribute('data-hidden', 'true');
+    e.currentTarget.setAttribute('data-visible', 'false');
   }
   currentTarget.insertAdjacentElement('beforebegin', newFieldset);
   const event = new CustomEvent('item:add', {
@@ -82,7 +76,7 @@ const add = (wrapper, form) => (e) => {
   form.dispatchEvent(event);
 };
 
-export default function transferRepeatableDOM(formDef, form) {
+export default function transferRepeatableDOM(form) {
   form.querySelectorAll('[data-repeatable="true"]').forEach((el) => {
     const div = document.createElement('div');
     div.setAttribute('data-min', el.dataset.min);
