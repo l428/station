@@ -212,6 +212,10 @@ export async function loadRuleEngine(formDef, htmlForm, captcha, genFormRenditio
     handleRuleEngineEvent(e, htmlForm);
     submitElement.removeAttribute('disabled');
   }, 'submitFailure');
+
+  form.subscribe((e) => {
+    handleRuleEngineEvent(e, htmlForm);
+  }, 'submitError');
   applyRuleEngine(htmlForm, form, captcha);
 }
 

@@ -1,24 +1,36 @@
 import { updateOrCreateInvalidMsg } from './util.js';
-import { fileAttachmentText, errorMessages } from './constant.js';
+import { fileAttachmentText, defaultErrorMessages } from './constant.js';
 
 const fileSizeRegex = /^(\d*\.?\d+)(\\?(?=[KMGT])([KMGT])(?:i?B)?|B?)$/i;
-function sizeToBytes(size, symbol) {
+
+/**
+ * converts a string of the form "10MB" to bytes. If the string is malformed 0 is returned
+ * @param {*} str
+ * @returns
+ */
+function getSizeInBytes(str) {
   const sizes = {
     KB: 1, MB: 2, GB: 3, TB: 4,
   };
-  const i = 1024 ** sizes[symbol];
-  return Math.round(size * i);
-}
-function getFileSizeInBytes(str) {
-  let retVal = 0;
+
   if (typeof str === 'string') {
     const matches = fileSizeRegex.exec(str.trim());
     if (matches != null) {
-      retVal = sizeToBytes(parseFloat(matches[1]), (matches[2] || 'kb').toUpperCase());
+      const symbol = matches[2] || 'kb';
+      const size = parseFloat(matches[1]);
+      const i = 1024 ** sizes[symbol.toUpperCase()];
+      return Math.round(size * i);
     }
   }
-  return retVal;
+  return 0;
 }
+
+/**
+ * matches the given mediaType with the accepted mediaTypes
+ * @param {*} mediaType mediaType of the file to match
+ * @param {[]} accepts accepted mediaTypes
+ * @returns false if the mediaType is not accepted
+ */
 function matchMediaType(mediaType, accepts) {
   return !mediaType || accepts.some((accept) => {
     const trimmedAccept = accept.trim();
@@ -29,39 +41,70 @@ function matchMediaType(mediaType, accepts) {
       || (trimmedAccept === mediaType));
   });
 }
-function maxFileSize(constraint, files) {
-  const sizeLimit = typeof constraint === 'string' ? getFileSizeInBytes(constraint) : constraint;
-  let isError = false;
-  Array.from(files).forEach((file) => {
-    if (file.size > sizeLimit) {
-      isError = true;
-    }
-  });
-  return isError;
+
+/**
+ * checks whether the size of the files in the array is withing the maxFileSize or not
+ * @param {string|number} maxFileSize maxFileSize in bytes or string with the unit
+ * @param {File[]} files array of File objects
+ * @returns false if any file is larger than the maxFileSize
+ */
+function checkMaxFileSize(maxFileSize, files) {
+  const sizeLimit = typeof maxFileSize === 'string' ? getSizeInBytes(maxFileSize) : maxFileSize;
+  return Array.from(files).find((file) => file.size > sizeLimit) === undefined;
 }
-function acceptCheck(constraint, value) {
-  if (!constraint || constraint.length === 0 || value === null || value === undefined) {
+
+/**
+ * checks whether the mediaType of the files in the array are accepted or not
+ * @param {[]} acceptedMediaTypes
+ * @param {File[]} files
+ * @returns false if the mediaType of any file is not accepted
+ */
+function checkAccept(acceptedMediaTypes, files) {
+  if (!acceptedMediaTypes || acceptedMediaTypes.length === 0
+    || files === null || files === undefined) {
     return true;
   }
-  const tempFiles = Array.from(value);
-  const invalidFile = tempFiles.some((file) => !matchMediaType(file.type, constraint));
+  const invalidFile = Array.from(files)
+    .some((file) => !matchMediaType(file.type, acceptedMediaTypes));
   return !invalidFile;
 }
-function fileValidation({ wrapper, input, files }) {
+
+/**
+ * triggers file Validation for the given input element and updates the error message
+ * @param {HTMLInputElement} input
+ */
+function fileValidation(input) {
   const multiple = input.hasAttribute('multiple');
   const acceptedFile = (input.getAttribute('accept') || '').split(',');
   const minItems = (parseInt(input.dataset.minItems, 10) || 1);
   const maxItems = (parseInt(input.dataset.maxItems, 10) || -1);
-  const fileSize = `${input.dataset.maxFileSize || '2'}MB`;
-  if (!acceptCheck(acceptedFile, files)) {
-    updateOrCreateInvalidMsg(input, (wrapper.dataset.accept || errorMessages.accept));
-  } else if (maxFileSize(fileSize, files)) {
-    updateOrCreateInvalidMsg(input, (wrapper.dataset.maxFileSize || errorMessages.maxFileSize));
+  const fileSize = `${input.dataset.maxFileSize || '2MB'}`;
+  let constraint = '';
+  let errorMessage = '';
+  const { files } = input;
+  const wrapper = input.closest('.field-wrapper');
+  if (!checkAccept(acceptedFile, files)) {
+    constraint = 'accept';
+  } else if (!checkMaxFileSize(fileSize, files)) {
+    constraint = 'maxFileSize';
   } else if (multiple && maxItems !== -1 && files.length > maxItems) {
-    updateOrCreateInvalidMsg(input, (wrapper.dataset.maxItems || errorMessages.maxItems.replace(/\$0/, maxItems)));
+    constraint = 'maxItems';
+    errorMessage = defaultErrorMessages.maxItems.replace(/\$0/, maxItems);
   } else if (multiple && minItems !== 1 && files.length < minItems) {
-    updateOrCreateInvalidMsg(input, (wrapper.dataset.minItems || errorMessages.minItems.replace(/\$0/, minItems)));
+    constraint = 'minItems';
+    errorMessage = defaultErrorMessages.minItems.replace(/\$0/, minItems);
+  }
+  if (constraint.length) {
+    const finalMessage = wrapper.dataset[constraint]
+    || errorMessage
+    || defaultErrorMessages[constraint];
+    input.setCustomValidity(finalMessage);
+    updateOrCreateInvalidMsg(
+      input,
+      finalMessage,
+    );
   } else {
+    input.setCustomValidity('');
     updateOrCreateInvalidMsg(input, '');
   }
 }
@@ -72,91 +115,79 @@ function getFiles(files) {
   return dataTransfer.files;
 }
 
-function updateButtonIndex(elements = []) {
-  elements.forEach((element, index) => {
-    const button = element.querySelector('button');
-    button.dataset.index = index;
-  });
+/**
+ * creates an HTML element for the attached file
+ * @param {File} file
+ * @param {number} index
+ */
+function fileElement(file, index) {
+  const el = document.createElement('div');
+  el.classList.add('file-description');
+  el.innerHTML = `<span>${file.name} ${(file.size / (1024 * 1024)).toFixed(2)}mb</span>
+  <button type="button" data-index="${index}"></button>`;
+  return el;
 }
 
-function addFileInFileList(fileList, file, index) {
-  const description = `<div class="file-description">
-  <span>${file.name} ${(file.size / (1024 * 1024)).toFixed(2)}mb</span>
-  <button type="button" data-index="${index}"></button>
-  </div>`;
-  fileList.innerHTML += description;
-}
-function clearFileList(fileList) {
-  fileList.innerHTML = '';
-}
-
-function createAttachButton(input) {
+function createAttachButton() {
   const button = document.createElement('button');
   button.type = 'button';
   button.innerHTML = fileAttachmentText;
-  button.onclick = () => {
-    input.click();
-  };
   return button;
 }
 
-function attachFiles(event, {
-  input, fileList, allFiles, wrapper,
-}) {
-  const multiple = input.hasAttribute('multiple');
-  if (!multiple) {
-    allFiles.splice(0, allFiles.length);
-  }
-  const files = event.files || event.target.files;
-  Array.from(files).forEach((file) => allFiles.push(file));
-  fileValidation({ wrapper, input, files: allFiles });
-  clearFileList(fileList);
-  allFiles.forEach((file, index) => addFileInFileList(fileList, file, index));
-  input.files = getFiles(allFiles);
-}
-
-function attachChangeEvent({
-  input, fileList, allFiles, wrapper,
-}) {
-  input.addEventListener('change', (event) => {
-    if (!event?.detail?.stopRendering) {
-      attachFiles(event, {
-        input, fileList, allFiles, wrapper,
-      });
-    }
-  });
-}
-
-function attachRemoveFileEvent({
-  input, fileList, allFiles, wrapper,
-}) {
-  fileList.addEventListener('click', (event) => {
-    if (event.target.tagName === 'BUTTON') {
-      const index = parseInt(event.target.dataset.index, 10);
+function createFileHandler(allFiles, input) {
+  return {
+    removeFile: (index) => {
       allFiles.splice(index, 1);
-      fileValidation({ wrapper, input, files: allFiles });
-      const deletedFile = Array.from(fileList.children)[index];
-      fileList.removeChild(deletedFile);
-      updateButtonIndex(Array.from(fileList.children));
-      const dupEvent = new CustomEvent('change', { bubbles: true, detail: { stopRendering: true } });
-      input.dispatchEvent(dupEvent);
+      const fileListElement = input.parentElement.querySelector('.files-list');
+      fileListElement.querySelector(`[data-index="${index}"]`).parentElement.remove();
       input.files = getFiles(allFiles);
-    }
-  });
+      fileValidation(input);
+      const dupEvent = new CustomEvent('change', { bubbles: true, detail: { deletion: true } });
+      input.dispatchEvent(dupEvent);
+    },
+
+    attachFiles: (event) => {
+      const inputEl = event.target;
+      const multiple = inputEl.hasAttribute('multiple');
+      if (!multiple) {
+        allFiles.splice(0, allFiles.length);
+      }
+      const newFiles = Array.from(event.target.files);
+      const currentLength = allFiles.length;
+      allFiles.push(...newFiles);
+      const newFileElements = newFiles
+        .map((file, index) => fileElement(file, index + currentLength));
+      const fileListElement = inputEl.parentElement.querySelector('.files-list');
+      if (multiple) {
+        fileListElement.append(...newFileElements);
+      } else {
+        fileListElement.replaceChildren(...newFileElements);
+      }
+      inputEl.files = getFiles(allFiles);
+      fileValidation(inputEl);
+    },
+  };
 }
 
-export default async function decorate(wrapper, field) {
+export default async function decorate(input) {
   const allFiles = [];
-  const input = wrapper.querySelector('input');
-  const fileList = document.createElement('div');
-  fileList.setAttribute('id', `${field.id}-fileList`);
-  const AttachButton = createAttachButton(input);
-  attachChangeEvent({
-    input, fileList, allFiles, wrapper,
+  const wrapper = input.closest('.field-wrapper');
+  const fileListElement = document.createElement('div');
+  fileListElement.classList.add('files-list');
+  const attachButton = createAttachButton();
+  attachButton.addEventListener('click', () => input.click());
+  const fileHandler = createFileHandler(allFiles, input);
+  input.addEventListener('change', (event) => {
+    if (!event?.detail?.deletion) {
+      fileHandler.attachFiles(event);
+    }
   });
-  attachRemoveFileEvent({
-    input, fileList, allFiles, wrapper,
+  fileListElement.addEventListener('click', (e) => {
+    if (e.target.tagName === 'BUTTON') {
+      fileHandler.removeFile(e.target.dataset.index);
+    }
   });
-  wrapper.insertBefore(AttachButton, input);
-  wrapper.append(fileList);
+  wrapper.insertBefore(attachButton, input);
+  wrapper.append(fileListElement);
 }

@@ -9,6 +9,7 @@ import GoogleReCaptcha from './integrations/recaptcha.js';
 
 import fileDecorate from './file.js';
 import DocBasedFormToAF from './transform.js';
+import transferRepeatableDOM from './layout/repeat.js';
 
 export const DELAY_MS = 0;
 let captchaField;
@@ -30,7 +31,7 @@ const constraintsDef = Object.entries({
   'password|tel|email|text': [['maxLength', 'maxlength'], ['minLength', 'minlength'], 'pattern'],
   'number|range|date': [['maximum', 'Max'], ['minimum', 'Min'], 'step'],
   file: ['accept', 'Multiple'],
-  fieldset: [['maxOccur', 'data-max'], ['minOccur', 'data-min']],
+  panel: [['maxOccur', 'data-max'], ['minOccur', 'data-min']],
 }).flatMap(([types, constraintDef]) => types.split('|')
   .map((type) => [type, constraintDef.map((cd) => (Array.isArray(cd) ? cd : [cd, cd]))]));
 
@@ -123,6 +124,10 @@ function createFieldSet(fd) {
   if (fd.fieldType === 'panel') {
     wrapper.classList.add('form-panel-wrapper');
   }
+  if (fd.repeatable === 'true') {
+    setConstraints(wrapper, fd);
+    wrapper.dataset.repeatable = true;
+  }
   return wrapper;
 }
 
@@ -177,8 +182,9 @@ function createPlainText(fd) {
 
 function createFileField(fd) {
   const field = createFieldWrapper(fd);
-  field.append(createInput(fd));
-  fileDecorate(field, fd);
+  const input = createInput(fd);
+  field.append(input);
+  fileDecorate(input);
   return field;
 }
 
@@ -260,7 +266,7 @@ function inputDecorator(field, element) {
     if (field.maxItems) {
       input.dataset.maxItems = field.maxItems;
     }
-    if (field.maxFileSize && !Number.isNaN(Number(field.maxFileSize))) {
+    if (field.maxFileSize) {
       input.dataset.maxFileSize = field.maxFileSize;
     }
     setConstraintsMessage(element, field.constraintMessages);
@@ -328,6 +334,22 @@ export async function generateFormRendition(panel, container) {
   await applyLayout(panel, container);
 }
 
+function enableValidation(form) {
+  form.querySelectorAll('input,textarea,select').forEach((input) => {
+    input.addEventListener('invalid', (event) => {
+      checkValidation(event.target);
+    });
+  });
+
+  form.addEventListener('change', (event) => {
+    const { validity } = event.target;
+    if (validity.valid) {
+      // only to remove the error message
+      checkValidation(event.target);
+    }
+  });
+}
+
 export async function createForm(formDef, data) {
   const { action: formPath } = formDef;
   const form = document.createElement('form');
@@ -342,9 +364,8 @@ export async function createForm(formDef, data) {
     captcha.loadCaptcha(form);
   }
 
-  form.addEventListener('change', (event) => {
-    checkValidation(event.target);
-  });
+  enableValidation(form);
+  transferRepeatableDOM(form);
 
   if (afModule) {
     window.setTimeout(async () => {

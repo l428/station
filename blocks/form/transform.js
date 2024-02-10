@@ -22,6 +22,7 @@ export default class DocBasedFormToAF {
     Mandatory: 'required',
     Options: 'enum',
     OptionNames: 'enumNames',
+    Repeatable: 'repeatable',
   };
 
   fieldMapping = new Map([
@@ -92,7 +93,7 @@ export default class DocBasedFormToAF {
     this.panelMap.set('root', formDef);
 
     exData.data.forEach((/** @type {{ [s: string]: any; } | ArrayLike<any>} */ item) => {
-      if (item.Name || item.Field) {
+      if (item.Type) {
         // eslint-disable-next-line no-unused-vars
         const source = Object.fromEntries(Object.entries(item).filter(([_, v]) => (v != null && v !== '')));
         let field = { ...source, ...this.#initField() };
@@ -227,6 +228,9 @@ export default class DocBasedFormToAF {
       if (item.fieldType === 'number' || item.fieldType === 'date') {
         item.maximum = item.Max;
         item.minimum = item.Min;
+      } else if (item.fieldType === 'panel') {
+        item.maxOccur = item.Max;
+        item.minOccur = item.Min;
       } else {
         item.maxLength = item.Max;
         item.minLength = item.Min;

@@ -1,5 +1,3 @@
-import { checkValidation } from './util.js';
-
 export function submitSuccess(e, form) {
   const { payload } = e;
   if (payload.body.redirectUrl) {
@@ -37,10 +35,6 @@ export function handleSubmit(e, form) {
   if (valid) {
     e.submitter.setAttribute('disabled', '');
   } else {
-    const fields = form.querySelectorAll(':invalid:not(fieldset)');
-    fields.forEach((field) => {
-      checkValidation(field);
-    });
     const firstInvalidEl = form.querySelector(':invalid:not(fieldset)');
     if (firstInvalidEl) {
       firstInvalidEl.focus();
