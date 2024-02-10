@@ -12,7 +12,7 @@ sampleRUM('cwv');
 try {
   await fetchPlaceholders();
 } catch (e) { /* ignore */ }
-loadCookieConsent();
+// loadCookieConsent();
 
 // also check consent stored in localstorage used while developing
 const analyticsConsent = localStorage.getItem('consent_status_ANALYTICS');
