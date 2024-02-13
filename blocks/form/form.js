@@ -10,6 +10,7 @@ import GoogleReCaptcha from './integrations/recaptcha.js';
 import fileDecorate from './file.js';
 import DocBasedFormToAF from './transform.js';
 import transferRepeatableDOM from './layout/repeat.js';
+import { handleSubmit } from './submit.js';
 
 export const DELAY_MS = 0;
 let captchaField;
@@ -373,6 +374,10 @@ export async function createForm(formDef, data) {
     }, DELAY_MS);
   }
 
+  form.addEventListener('submit', (e) => {
+    handleSubmit(e, form);
+  });
+
   return form;
 }
 
@@ -383,8 +388,9 @@ function isDocumentBasedForm(formDef) {
 export default async function decorate(block) {
   let container = block.querySelector('a[href$=".json"]');
   let formDef;
+  let pathname;
   if (container) {
-    const { pathname } = new URL(container.href);
+    ({ pathname } = new URL(container.href));
     formDef = await fetchForm(pathname);
   } else {
     container = block.querySelector('pre');
@@ -400,6 +406,8 @@ export default async function decorate(block) {
       const transform = new DocBasedFormToAF();
       const afFormDef = transform.transform(formDef);
       const form = await createForm(afFormDef, data);
+      form.dataset.action = pathname?.split('.json')[0];
+      form.dataset.src = 'sheet';
       container.replaceWith(form);
     } else {
       afModule = await import('./rules/index.js');

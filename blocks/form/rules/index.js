@@ -1,4 +1,4 @@
-import { submitSuccess, submitFailure, handleSubmit } from '../submit.js';
+import { submitSuccess, submitFailure } from '../submit.js';
 import {
   createHelpText, createLabel, updateOrCreateInvalidMsg, getCheckboxGroupValue,
 } from '../util.js';
@@ -192,12 +192,6 @@ export async function loadRuleEngine(formDef, htmlForm, captcha, genFormRenditio
   }
 
   window.myForm = form;
-  let submitElement;
-  htmlForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    submitElement = e.submitter;
-    handleSubmit(e, htmlForm);
-  });
 
   form.subscribe((e) => {
     handleRuleEngineEvent(e, htmlForm, genFormRendition);
@@ -205,12 +199,10 @@ export async function loadRuleEngine(formDef, htmlForm, captcha, genFormRenditio
 
   form.subscribe((e) => {
     handleRuleEngineEvent(e, htmlForm);
-    submitElement.removeAttribute('disabled');
   }, 'submitSuccess');
 
   form.subscribe((e) => {
     handleRuleEngineEvent(e, htmlForm);
-    submitElement.removeAttribute('disabled');
   }, 'submitFailure');
 
   form.subscribe((e) => {
