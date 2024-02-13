@@ -36,29 +36,32 @@ function generateUnique() {
   return new Date().valueOf() + Math.random();
 }
 
-function includeInPayload(payload, field) {
-  // disabled field should not be part of payload.
-  if (field.name && !field.matches('button') && !field.disabled) {
-    if (field.type === 'radio') {
-      if (field.checked) payload[field.name] = field.value;
-    } else if (field.type === 'checkbox') {
-      if (field.checked) payload[field.name] = payload[field.name] ? `${payload[field.name]},${field.value}` : field.value;
-    } else if (field.type !== 'file') {
-      payload[field.name] = field.value;
+function getFieldValue(fe, payload) {
+  if (fe.type === 'radio') {
+    if (fe.checked) return fe.value;
+  } else if (fe.type === 'checkbox') {
+    if (fe.checked) {
+      if (payload[fe.name]) {
+        return `${payload[fe.name]},${fe.value}`;
+      }
+      return fe.value;
     }
+  } else if (fe.type !== 'file') {
+    return fe.value;
   }
-  return payload;
+  return null;
 }
 
-export function constructPayload(form) {
+function constructPayload(form) {
   const payload = { __id__: generateUnique() };
-  [...form.elements].forEach((field) => {
-    if (field.matches('fieldset[data-repeatable]')) {
-      payload[field.name] = (payload[field.name] || []).concat([
-        [...field.elements].reduce((fdpayload, fd) => includeInPayload(fdpayload, fd), {}),
-      ]);
-    } else if (!field.closest('fieldset[data-repeatable]')) {
-      includeInPayload(payload, field);
+  [...form.elements].forEach((fe) => {
+    if (fe.name && !fe.matches('button') && !fe.disabled && fe.tagName !== 'FIELDSET') {
+      const value = getFieldValue(fe, payload);
+      if (fe.closest('.form-repeat-wrapper')) {
+        payload[fe.name] = payload[fe.name] ? `${payload[fe.name]},${fe.value}` : value;
+      } else {
+        payload[fe.name] = value;
+      }
     }
   });
   return { payload };
