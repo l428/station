@@ -339,3 +339,7 @@ main .section[data-section-status='initialized'] {
 .cc-btn.cc-save {
   padding: 13px 29px;
 }
+
+.section.form-container {
+  margin: 0 auto;
+}
