@@ -6,10 +6,9 @@ import {
   checkValidation,
 } from './util.js';
 import GoogleReCaptcha from './integrations/recaptcha.js';
-
-import fileDecorate from './file.js';
+import componentDecorater from './mappings.js';
 import DocBasedFormToAF from './transform.js';
-import transferRepeatableDOM from './layout/repeat.js';
+import transferRepeatableDOM from './components/repeat.js';
 import { handleSubmit } from './submit.js';
 
 export const DELAY_MS = 0;
@@ -181,14 +180,6 @@ function createPlainText(fd) {
   return wrapper;
 }
 
-function createFileField(fd) {
-  const field = createFieldWrapper(fd);
-  const input = createInput(fd);
-  field.append(input);
-  fileDecorate(input);
-  return field;
-}
-
 const fieldRenderers = {
   'drop-down': createSelect,
   'plain-text': createPlainText,
@@ -199,7 +190,6 @@ const fieldRenderers = {
   radio: createRadioOrCheckbox,
   'radio-group': createRadioOrCheckboxGroup,
   'checkbox-group': createRadioOrCheckboxGroup,
-  file: createFileField,
 };
 
 async function fetchForm(pathname) {
@@ -275,24 +265,6 @@ function inputDecorator(field, element) {
   }
 }
 
-const layoutDecorators = [
-  [(panel) => {
-    const { ':type': type = '' } = panel;
-    return type.endsWith('wizard');
-  }, 'wizard'],
-];
-
-async function applyLayout(panel, element) {
-  const result = layoutDecorators.find(([predicate]) => predicate(panel));
-  if (result) {
-    const module = await import(`./layout/${result[1]}.js`);
-    if (module && module.default) {
-      const layoutFn = module.default;
-      await layoutFn(element);
-    }
-  }
-}
-
 function renderField(fd) {
   const fieldType = fd?.fieldType?.replace('-input', '') ?? 'text';
   const renderer = fieldRenderers[fieldType];
@@ -307,32 +279,42 @@ function renderField(fd) {
     field.append(createHelpText(fd));
     field.dataset.description = fd.description; // In case overriden by error message
   }
+  if (fd.fieldType !== 'radio-group' && fd.fieldType !== 'checkbox-group') {
+    inputDecorator(fd, field);
+  }
   return field;
 }
 
 export async function generateFormRendition(panel, container) {
   const { items = [] } = panel;
-  const promises = [];
-  items.forEach((field) => {
+  const promises = items.map(async (field) => {
     field.value = field.value ?? '';
     const { fieldType } = field;
     if (fieldType === 'captcha') {
       captchaField = field;
     } else {
       const element = renderField(field);
-      if (field.fieldType !== 'radio-group' && field.fieldType !== 'checkbox-group') {
-        inputDecorator(field, element);
-      }
       colSpanDecorator(field, element);
-      container.append(element);
+      const decorator = await componentDecorater(field);
       if (field?.fieldType === 'panel') {
-        promises.push(generateFormRendition(field, element));
+        await generateFormRendition(field, element);
+        return element;
       }
+      if (typeof decorator === 'function') {
+        return decorator(element, field);
+      }
+      return element;
     }
+    return null;
   });
 
-  await Promise.all(promises);
-  await applyLayout(panel, container);
+  const children = await Promise.all(promises);
+  container.append(...children.filter((_) => _ != null));
+  const decorator = await componentDecorater(panel);
+  if (typeof decorator === 'function') {
+    return decorator(container, panel);
+  }
+  return container;
 }
 
 function enableValidation(form) {

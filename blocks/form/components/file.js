@@ -1,5 +1,5 @@
-import { updateOrCreateInvalidMsg } from './util.js';
-import { fileAttachmentText, defaultErrorMessages } from './constant.js';
+import { updateOrCreateInvalidMsg } from '../util.js';
+import { fileAttachmentText, defaultErrorMessages } from '../constant.js';
 
 const fileSizeRegex = /^(\d*\.?\d+)(\\?(?=[KMGT])([KMGT])(?:i?B)?|B?)$/i;
 
@@ -170,9 +170,11 @@ function createFileHandler(allFiles, input) {
   };
 }
 
-export default async function decorate(input) {
+// eslint-disable-next-line no-unused-vars
+export default async function decorate(fieldDiv, field) {
   const allFiles = [];
-  const wrapper = input.closest('.field-wrapper');
+  const input = fieldDiv.querySelector('input');
+  fieldDiv.classList.add('decorated');
   const fileListElement = document.createElement('div');
   fileListElement.classList.add('files-list');
   const attachButton = createAttachButton();
@@ -188,6 +190,7 @@ export default async function decorate(input) {
       fileHandler.removeFile(e.target.dataset.index);
     }
   });
-  wrapper.insertBefore(attachButton, input);
-  wrapper.append(fileListElement);
+  fieldDiv.insertBefore(attachButton, input);
+  fieldDiv.insertBefore(fileListElement, input.nextElementSibling);
+  return fieldDiv;
 }
