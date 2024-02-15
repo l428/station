@@ -1,3 +1,6 @@
+
+@import 'components/range.css';
+
 :root {
     --background-color-primary: #fff;
     --label-color: #666;

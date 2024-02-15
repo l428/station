@@ -1,3 +1,5 @@
+// eslint-disable-next-line no-unused-vars
+import range from './components/range.js';
 /**
  * returns a decorator to decorate the field definition
  *
@@ -12,5 +14,9 @@ export default async function componentDecorator(fd) {
     const module = await import('./components/wizard.js');
     return module.default;
   }
+
+  /* if (fieldType === 'range') {
+    return range;
+  } */
   return null;
 }
