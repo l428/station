@@ -1,6 +1,6 @@
 // eslint-disable-next-line import/no-cycle
 import { fetchPlaceholders, sampleRUM } from './lib-franklin.js';
-import loadCookieConsent from './cookie-consent/lib-cookie-consent.js';
+// import loadCookieConsent from './cookie-consent/lib-cookie-consent.js';
 import { analyticsSetConsent } from './analytics/lib-analytics.js';
 
 // Core Web Vitals RUM collection
