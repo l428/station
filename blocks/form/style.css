@@ -7,6 +7,15 @@
     appearance: none;
 } */
 
-/* main .form form div:has(> .form-traveler) {
-    flex: 100%;
- } */
+/* .form-age {
+    display: inline-block;
+    position: relative;
+ }
+
+ .form-age::after {
+    position: absolute;
+    top: 47px;
+    left: 3rem;
+    font-size: 1.2rem;
+    content: 'years old';
+} */
