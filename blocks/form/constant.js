@@ -7,4 +7,4 @@ export const defaultErrorMessages = {
   minItems: 'Specify a number of items equal to or greater than $0.',
 };
 
-export const submitBaseUrl = '';
+export const submitBaseUrl = 'https://author-p129702-e1266104.adobeaemcloud.com';
