@@ -10,6 +10,7 @@ import componentDecorater from './mappings.js';
 import DocBasedFormToAF from './transform.js';
 import transferRepeatableDOM from './components/repeat.js';
 import { handleSubmit } from './submit.js';
+import { submitBaseUrl } from './constant.js';
 
 export const DELAY_MS = 0;
 let captchaField;
@@ -367,36 +368,47 @@ function isDocumentBasedForm(formDef) {
   return formDef?.[':type'] === 'sheet' && formDef?.data;
 }
 
+function cleanUp(content) {
+  const formDef = content.replaceAll('^(([^<>()\\\\[\\\\]\\\\\\\\.,;:\\\\s@\\"]+(\\\\.[^<>()\\\\[\\\\]\\\\\\\\.,;:\\\\s@\\"]+)*)|(\\".+\\"))@((\\\\[[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}])|(([a-zA-Z\\\\-0-9]+\\\\.)\\+[a-zA-Z]{2,}))$', '');
+  return formDef?.replace(/\x83\n|\n|\s\s+/g, '');
+}
+
 export default async function decorate(block) {
   let container = block.querySelector('a[href$=".json"]');
   let formDef;
   let pathname;
   if (container) {
     ({ pathname } = new URL(container.href));
-    formDef = await fetchForm(pathname);
+    formDef = await fetchForm(container.href);
   } else {
     container = block.querySelector('pre');
     const codeEl = container?.querySelector('code');
     const content = codeEl?.textContent;
     if (content) {
-      formDef = JSON.parse(content?.replace(/\x83\n|\n|\s\s+/g, ''));
+      formDef = JSON.parse(cleanUp(content));
     }
   }
+  let { rules, source } = { rules: true, source: 'aem' };
+  let form;
   if (formDef) {
     if (isDocumentBasedForm(formDef)) {
-      const { data } = formDef;
+      rules = false;
       const transform = new DocBasedFormToAF();
-      const afFormDef = transform.transform(formDef);
-      const form = await createForm(afFormDef, data);
-      form.dataset.action = pathname?.split('.json')[0];
-      form.dataset.src = 'sheet';
-      container.replaceWith(form);
-    } else {
+      formDef = transform.transform(formDef);
+      source = 'sheet';
+    }
+
+    if (rules) {
       afModule = await import('./rules/index.js');
       if (afModule && afModule.initAdaptiveForm) {
-        const form = await afModule.initAdaptiveForm(formDef, createForm);
-        container.replaceWith(form);
+        form = await afModule.initAdaptiveForm(formDef, createForm);
       }
+    } else {
+      form = await createForm(formDef);
     }
+    form.dataset.action = formDef.action || pathname?.split('.json')[0];
+    form.dataset.src = source;
+    formDef.action = submitBaseUrl + formDef.action;
+    container.replaceWith(form);
   }
 }

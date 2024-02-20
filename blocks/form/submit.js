@@ -100,7 +100,7 @@ export async function handleSubmit(e, form) {
   e.preventDefault();
   const valid = form.checkValidity();
   if (valid) {
-    e.submitter.setAttribute('disabled', '');
+    e.submitter?.setAttribute('disabled', '');
     if (form.getAttribute('data-submitting') !== 'true') {
       form.setAttribute('data-submitting', 'true');
 
