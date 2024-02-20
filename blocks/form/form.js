@@ -125,7 +125,7 @@ function createFieldSet(fd) {
   if (fd.fieldType === 'panel') {
     wrapper.classList.add('form-panel-wrapper');
   }
-  if (fd.repeatable === 'true') {
+  if (fd.repeatable === 'true' || fd.repeatable === true) {
     setConstraints(wrapper, fd);
     wrapper.dataset.repeatable = true;
   }
@@ -398,6 +398,7 @@ export default async function decorate(block) {
       source = 'sheet';
     }
 
+    formDef.action = submitBaseUrl + formDef.action;
     if (rules) {
       afModule = await import('./rules/index.js');
       if (afModule && afModule.initAdaptiveForm) {
@@ -407,8 +408,8 @@ export default async function decorate(block) {
       form = await createForm(formDef);
     }
     form.dataset.action = formDef.action || pathname?.split('.json')[0];
-    form.dataset.src = source;
-    formDef.action = submitBaseUrl + formDef.action;
+    form.dataset.source = source;
+    form.dataset.rules = rules;
     container.replaceWith(form);
   }
 }
