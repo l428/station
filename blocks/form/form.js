@@ -23,8 +23,8 @@ const withFieldWrapper = (element) => (fd) => {
 };
 
 function setPlaceholder(element, fd) {
-  if (fd.placeHolder) {
-    element.setAttribute('placeholder', fd.placeHolder);
+  if (fd.placeholder) {
+    element.setAttribute('placeholder', fd.placeholder);
   }
 }
 
@@ -128,6 +128,7 @@ function createFieldSet(fd) {
   if (fd.repeatable === 'true' || fd.repeatable === true) {
     setConstraints(wrapper, fd);
     wrapper.dataset.repeatable = true;
+    wrapper.dataset.index = fd.index || 0;
   }
   return wrapper;
 }
@@ -142,7 +143,7 @@ function createRadioOrCheckboxGroup(fd) {
   const wrapper = createFieldSet({ ...fd });
   const type = fd.fieldType.split('-')[0];
   fd.enum.forEach((value, index) => {
-    const label = typeof fd.enumNames[index] === 'object' ? fd.enumNames[index].value : fd.enumNames[index];
+    const label = typeof fd.enumNames?.[index] === 'object' ? fd.enumNames[index].value : fd.enumNames?.[index] || value;
     const id = getId(fd.name);
     const field = createRadioOrCheckbox({
       name: fd.name,
@@ -161,9 +162,15 @@ function createRadioOrCheckboxGroup(fd) {
     if ((index === 0 && type === 'radio') || type === 'checkbox') {
       input.required = fd.required;
     }
+    if (fd.enabled === false || fd.readOnly === true) {
+      input.setAttribute('disabled', 'disabled');
+    }
     wrapper.appendChild(field);
   });
   wrapper.dataset.required = fd.required;
+  if (fd.tooltip) {
+    wrapper.title = stripTags(fd.tooltip, '');
+  }
   setConstraintsMessage(wrapper, fd.constraintMessages);
   return wrapper;
 }
@@ -224,10 +231,15 @@ function inputDecorator(field, element) {
   if (input) {
     input.id = field.id;
     input.name = field.name;
-    input.tooltip = field.tooltip;
+    if (field.tooltip) {
+      input.title = stripTags(field.tooltip, '');
+    }
     input.readOnly = field.readOnly;
     input.autocomplete = field.autoComplete ?? 'off';
     input.disabled = field.enabled === false;
+    if (field.fieldType === 'drop-down' && field.readOnly) {
+      input.disabled = true;
+    }
     const fieldType = getHTMLRenderType(field);
     if (['number', 'date'].includes(fieldType) && field.displayFormat !== undefined) {
       field.type = fieldType;
@@ -302,7 +314,7 @@ export async function generateFormRendition(panel, container) {
         return element;
       }
       if (typeof decorator === 'function') {
-        return decorator(element, field);
+        return decorator(element, field, container);
       }
       return element;
     }
@@ -398,7 +410,7 @@ export default async function decorate(block) {
       source = 'sheet';
     }
 
-    formDef.action = submitBaseUrl + formDef.action;
+    formDef.action = submitBaseUrl + (formDef.action || '');
     if (rules) {
       afModule = await import('./rules/index.js');
       if (afModule && afModule.initAdaptiveForm) {

@@ -1,4 +1,5 @@
-export const fileAttachmentText = 'Select files';
+export const fileAttachmentText = 'Attach';
+export const dragDropText = 'Drag and Drop To Upload';
 
 export const defaultErrorMessages = {
   accept: 'The specified file type not supported.',
