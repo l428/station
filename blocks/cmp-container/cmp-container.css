@@ -1,10 +1,13 @@
+.section .cmp-container-wrapper {
+    max-width: unset;
+}
+
 .cmp-container-container{
     position: sticky;
     top: 0;
     z-index: 9;
     background: var(--background-color-primary);
 }
-
 
 .section.cmp-container-container{
     padding: 0;
@@ -22,8 +25,13 @@
     gap: 50px;
     margin: 0;
     padding: 0;
+    align-items: center;
 }
 
 .cmp-container-wrapper .cmp-container picture {
     margin-left: 110px;
+}
+
+header {
+    height: 0;
 }
