@@ -26,6 +26,7 @@ export default class DocBasedFormToAF {
     Options: 'enum',
     OptionNames: 'enumNames',
     Repeatable: 'repeatable',
+    Style: 'appliedCssClassNames',
   };
 
   fieldMapping = new Map([
@@ -37,8 +38,10 @@ export default class DocBasedFormToAF {
     ['radio-group', 'radio-group'],
     ['checkbox-group', 'checkbox-group'],
     ['plain-text', 'plain-text'],
+    ['plaintext', 'plain-text'],
     ['checkbox', 'checkbox'],
     ['textarea', 'multiline-input'],
+    ['text-area', 'multiline-input'],
     ['fieldset', 'panel'],
     ['button', 'button'],
   ]);
@@ -243,6 +246,11 @@ export default class DocBasedFormToAF {
       }
       delete item.Max;
       delete item.Min;
+    }
+
+    if (item.fieldType === 'plain-text' && !item.value) {
+      item.value = item?.label?.value;
+      item.label = null;
     }
   }
 

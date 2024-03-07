@@ -128,7 +128,7 @@ async function fieldChanged(payload, form, generateFormRendition) {
         }
         break;
       case 'items':
-        generateFormRendition({ items: [currentValue] }, field?.querySelector('.form-repeat-wrapper'));
+        generateFormRendition({ items: [currentValue] }, field?.querySelector('.repeat-wrapper'));
         break;
       default:
         break;

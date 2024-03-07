@@ -94,7 +94,26 @@ const createSelect = withFieldWrapper((fd) => {
 
   const options = fd?.enum || [];
   const optionNames = fd?.enumNames ?? options;
-  options.forEach((value, index) => addOption(optionNames?.[index], value));
+
+  if (options.length === 1
+    && options?.[0]?.startsWith('https://')) {
+    const optionsUrl = new URL(options?.[0]);
+    // using async to avoid rendering
+    if (optionsUrl.hostname.endsWith('hlx.page')
+    || optionsUrl.hostname.endsWith('hlx.live')) {
+      fetch(`${optionsUrl.pathname}${optionsUrl.search}`)
+        .then(async (response) => {
+          const json = await response.json();
+          const values = [];
+          json.data.forEach((opt) => {
+            addOption(opt.Option, opt.Value);
+            values.push(opt.Value || opt.Option);
+          });
+        });
+    }
+  } else {
+    options.forEach((value, index) => addOption(optionNames?.[index], value));
+  }
 
   if (ph && optionSelected === false) {
     ph.setAttribute('selected', '');
@@ -123,7 +142,7 @@ function createFieldSet(fd) {
   wrapper.id = fd.id;
   wrapper.name = fd.name;
   if (fd.fieldType === 'panel') {
-    wrapper.classList.add('form-panel-wrapper');
+    wrapper.classList.add('panel-wrapper');
   }
   if (fd.repeatable === 'true' || fd.repeatable === true) {
     setConstraints(wrapper, fd);
@@ -153,7 +172,7 @@ function createRadioOrCheckboxGroup(fd) {
       enum: [value],
       required: fd.required,
     });
-    field.classList.remove('field-wrapper', `form-${fd.name}`);
+    field.classList.remove('field-wrapper', `field-${fd.name}`);
     const input = field.querySelector('input');
     input.id = id;
     input.dataset.fieldType = fd.fieldType;
@@ -188,6 +207,18 @@ function createPlainText(fd) {
   return wrapper;
 }
 
+function createImage(fd) {
+  const field = createFieldWrapper(fd);
+  const image = ` 
+  <picture>
+    <source srcset="${fd.source}?width=2000&optimize=medium" media="(min-width: 600px)">
+    <source srcset="${fd.source}?width=750&optimize=medium">
+    <img alt="${fd.altText || fd.name}" src="${fd.source}?width=750&optimize=medium">
+  </picture>`;
+  field.innerHTML = image;
+  return field;
+}
+
 const fieldRenderers = {
   'drop-down': createSelect,
   'plain-text': createPlainText,
@@ -198,6 +229,7 @@ const fieldRenderers = {
   radio: createRadioOrCheckbox,
   'radio-group': createRadioOrCheckboxGroup,
   'checkbox-group': createRadioOrCheckboxGroup,
+  image: createImage,
 };
 
 async function fetchForm(pathname) {
@@ -307,6 +339,9 @@ export async function generateFormRendition(panel, container) {
       captchaField = field;
     } else {
       const element = renderField(field);
+      if (field.appliedCssClassNames) {
+        element.className += ` col-${field.appliedCssClassNames}`;
+      }
       colSpanDecorator(field, element);
       const decorator = await componentDecorater(field);
       if (field?.fieldType === 'panel') {
