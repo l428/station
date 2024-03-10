@@ -3,6 +3,7 @@ import {
   createHelpText, createLabel, updateOrCreateInvalidMsg, getCheckboxGroupValue,
 } from '../util.js';
 import registerCustomFunctions from './functionRegistration.js';
+import { externalize } from './functions.js';
 import initializeRuleEngineWorker from './worker.js';
 
 function disableElement(el, value) {
@@ -210,7 +211,8 @@ export async function loadRuleEngine(formDef, htmlForm, captcha, genFormRenditio
 async function fetchData({ id }) {
   try {
     const { search = '' } = window.location;
-    const response = await fetch(`/adobe/forms/af/data/${id}${search}`);
+    const url = externalize(`/adobe/forms/af/data/${id}${search}`);
+    const response = await fetch(url);
     const json = await response.json();
     const { data } = json;
     const { data: { afData: { afBoundData = {} } = {} } = {} } = json;

@@ -144,7 +144,7 @@ function createFieldSet(fd) {
   if (fd.fieldType === 'panel') {
     wrapper.classList.add('panel-wrapper');
   }
-  if (fd.repeatable === 'true' || fd.repeatable === true) {
+  if (fd.repeatable === true) {
     setConstraints(wrapper, fd);
     wrapper.dataset.repeatable = true;
     wrapper.dataset.index = fd.index || 0;
@@ -209,7 +209,7 @@ function createPlainText(fd) {
 
 function createImage(fd) {
   const field = createFieldWrapper(fd);
-  const image = ` 
+  const image = `
   <picture>
     <source srcset="${fd.source}?width=2000&optimize=medium" media="(min-width: 600px)">
     <source srcset="${fd.source}?width=750&optimize=medium">
@@ -390,7 +390,7 @@ export async function createForm(formDef, data) {
 
   let captcha;
   if (captchaField) {
-    const siteKey = captchaField?.properties?.['fd:captcha']?.config?.siteKey;
+    const siteKey = captchaField?.properties?.['fd:captcha']?.config?.siteKey || captchaField?.value;
     captcha = new GoogleReCaptcha(siteKey, captchaField.id);
     captcha.loadCaptcha(form);
   }
@@ -405,7 +405,7 @@ export async function createForm(formDef, data) {
   }
 
   form.addEventListener('submit', (e) => {
-    handleSubmit(e, form);
+    handleSubmit(e, form, captcha);
   });
 
   return form;
@@ -435,25 +435,25 @@ export default async function decorate(block) {
       formDef = JSON.parse(cleanUp(content));
     }
   }
-  let { rules, source } = { rules: true, source: 'aem' };
+  let source = 'aem';
+  let rules = true;
   let form;
   if (formDef) {
     if (isDocumentBasedForm(formDef)) {
-      rules = false;
       const transform = new DocBasedFormToAF();
       formDef = transform.transform(formDef);
       source = 'sheet';
-    }
-
-    formDef.action = submitBaseUrl + (formDef.action || '');
-    if (rules) {
+      form = await createForm(formDef);
+      const docRuleEngine = await import('./rules-doc/index.js');
+      docRuleEngine.default(formDef, form);
+      rules = false;
+    } else {
       afModule = await import('./rules/index.js');
       if (afModule && afModule.initAdaptiveForm) {
         form = await afModule.initAdaptiveForm(formDef, createForm);
       }
-    } else {
-      form = await createForm(formDef);
     }
+    formDef.action = submitBaseUrl + (formDef.action || '');
     form.dataset.action = formDef.action || pathname?.split('.json')[0];
     form.dataset.source = source;
     form.dataset.rules = rules;
