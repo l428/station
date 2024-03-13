@@ -10,7 +10,7 @@ import componentDecorater from './mappings.js';
 import DocBasedFormToAF from './transform.js';
 import transferRepeatableDOM from './components/repeat.js';
 import { handleSubmit } from './submit.js';
-import { submitBaseUrl } from './constant.js';
+import { getSubmitBaseUrl } from './constant.js';
 
 export const DELAY_MS = 0;
 let captchaField;
@@ -340,7 +340,7 @@ export async function generateFormRendition(panel, container) {
     } else {
       const element = renderField(field);
       if (field.appliedCssClassNames) {
-        element.className += ` col-${field.appliedCssClassNames}`;
+        element.className += ` ${field.appliedCssClassNames}`;
       }
       colSpanDecorator(field, element);
       const decorator = await componentDecorater(field);
@@ -439,6 +439,7 @@ export default async function decorate(block) {
   let rules = true;
   let form;
   if (formDef) {
+    formDef.action = getSubmitBaseUrl() + (formDef.action || '');
     if (isDocumentBasedForm(formDef)) {
       const transform = new DocBasedFormToAF();
       formDef = transform.transform(formDef);
@@ -453,7 +454,6 @@ export default async function decorate(block) {
         form = await afModule.initAdaptiveForm(formDef, createForm);
       }
     }
-    formDef.action = submitBaseUrl + (formDef.action || '');
     form.dataset.action = formDef.action || pathname?.split('.json')[0];
     form.dataset.source = source;
     form.dataset.rules = rules;

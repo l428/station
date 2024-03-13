@@ -27,7 +27,7 @@ async function fieldChanged(payload, form, generateFormRendition) {
     const {
       id, fieldType, readOnly, type, displayValue, displayFormat,
     } = fieldModel;
-    const { propertyName, currentValue } = change;
+    const { propertyName, currentValue, prevValue } = change;
     const field = form.querySelector(`#${id}`);
     if (!field) {
       return;
@@ -129,7 +129,12 @@ async function fieldChanged(payload, form, generateFormRendition) {
         }
         break;
       case 'items':
-        generateFormRendition({ items: [currentValue] }, field?.querySelector('.repeat-wrapper'));
+        if (currentValue === null) {
+          const removeId = prevValue.id;
+          field?.querySelector(`#${removeId}`)?.remove();
+        } else {
+          generateFormRendition({ items: [currentValue] }, field?.querySelector('.repeat-wrapper'));
+        }
         break;
       default:
         break;
